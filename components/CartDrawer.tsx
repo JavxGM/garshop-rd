@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { generarMensajeWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/lib/supabase";
-import { X, Trash2, Plus, Minus, ShoppingCart, MessageCircle } from "lucide-react";
+import { X, Trash2, Plus, Minus, ShoppingCart, MessageCircle, AlertCircle } from "lucide-react";
+
+// Valida teléfonos dominicanos: 809, 829, 849 con o sin prefijo 1
+function validarTelefonoDO(tel: string): boolean {
+  const limpio = tel.replace(/\D/g, "");
+  // Acepta: 8091234567, 18091234567, con guiones/espacios/paréntesis
+  return /^1?(809|829|849)\d{7}$/.test(limpio);
+}
 
 export default function CartDrawer() {
   const { items, abierto, setAbierto, quitar, cambiarCantidad, total, limpiar } =
@@ -16,24 +23,42 @@ export default function CartDrawer() {
   const [direccion, setDireccion] = useState("");
   const [notas, setNotas] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [errores, setErrores] = useState<Record<string, string>>({});
+
+  const validar = (): boolean => {
+    const nuevos: Record<string, string> = {};
+    if (!nombre.trim()) nuevos.nombre = "El nombre es requerido";
+    if (!telefono.trim()) {
+      nuevos.telefono = "El teléfono es requerido";
+    } else if (!validarTelefonoDO(telefono)) {
+      nuevos.telefono = "Ingresa un número dominicano válido (809, 829 o 849)";
+    }
+    if (!direccion.trim()) nuevos.direccion = "La dirección es requerida";
+    setErrores(nuevos);
+    return Object.keys(nuevos).length === 0;
+  };
 
   const handlePedido = async () => {
-    if (!nombre || !telefono || !direccion || enviando) return;
+    if (!validar() || enviando) return;
     setEnviando(true);
     try {
-      await supabase.from("garshop_pedidos").insert({
-        cliente_nombre: nombre,
-        cliente_telefono: telefono,
-        cliente_direccion: direccion,
+      const { error } = await supabase.from("garshop_pedidos").insert({
+        cliente_nombre: nombre.trim(),
+        cliente_telefono: telefono.trim(),
+        cliente_direccion: direccion.trim(),
         items,
         total,
         estado: "pendiente",
-        notas: notas || null,
+        notas: notas.trim() || null,
       });
+      if (error) {
+        console.error("Error guardando pedido en Supabase:", error.message);
+        // El pedido continúa hacia WhatsApp aunque falle Supabase
+      }
     } catch (err) {
       console.error("Error guardando pedido:", err);
     } finally {
-      const url = generarMensajeWhatsApp(items, nombre, telefono, direccion, notas);
+      const url = generarMensajeWhatsApp(items, nombre.trim(), telefono.trim(), direccion.trim(), notas.trim());
       window.open(url, "_blank");
       limpiar();
       setPaso("carrito");
@@ -41,9 +66,16 @@ export default function CartDrawer() {
       setTelefono("");
       setDireccion("");
       setNotas("");
+      setErrores({});
       setAbierto(false);
       setEnviando(false);
     }
+  };
+
+  const handleCerrar = () => {
+    setAbierto(false);
+    setPaso("carrito");
+    setErrores({});
   };
 
   if (!abierto) return null;
@@ -53,7 +85,7 @@ export default function CartDrawer() {
       {/* Overlay */}
       <div
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-        onClick={() => { setAbierto(false); setPaso("carrito"); }}
+        onClick={handleCerrar}
       />
 
       {/* Drawer */}
@@ -75,7 +107,7 @@ export default function CartDrawer() {
             </h2>
           </div>
           <button
-            onClick={() => { setAbierto(false); setPaso("carrito"); }}
+            onClick={handleCerrar}
             className="rounded-lg p-1.5 text-gray-400 transition hover:bg-[#1a2535] hover:text-white"
           >
             <X className="h-5 w-5" />
@@ -156,10 +188,15 @@ export default function CartDrawer() {
                 </label>
                 <input
                   value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
+                  onChange={(e) => { setNombre(e.target.value); setErrores((prev) => ({ ...prev, nombre: "" })); }}
                   placeholder="Juan Pérez"
-                  className="w-full rounded-lg border border-[#1e2a3a] bg-[#0d1520] px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-cyan-500"
+                  className={`w-full rounded-lg border bg-[#0d1520] px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-cyan-500 ${errores.nombre ? "border-red-500" : "border-[#1e2a3a]"}`}
                 />
+                {errores.nombre && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
+                    <AlertCircle className="h-3 w-3" />{errores.nombre}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-400">
@@ -167,10 +204,17 @@ export default function CartDrawer() {
                 </label>
                 <input
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => { setTelefono(e.target.value); setErrores((prev) => ({ ...prev, telefono: "" })); }}
                   placeholder="809-555-0000"
-                  className="w-full rounded-lg border border-[#1e2a3a] bg-[#0d1520] px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-cyan-500"
+                  type="tel"
+                  inputMode="tel"
+                  className={`w-full rounded-lg border bg-[#0d1520] px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-cyan-500 ${errores.telefono ? "border-red-500" : "border-[#1e2a3a]"}`}
                 />
+                {errores.telefono && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
+                    <AlertCircle className="h-3 w-3" />{errores.telefono}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-400">
@@ -178,10 +222,15 @@ export default function CartDrawer() {
                 </label>
                 <input
                   value={direccion}
-                  onChange={(e) => setDireccion(e.target.value)}
+                  onChange={(e) => { setDireccion(e.target.value); setErrores((prev) => ({ ...prev, direccion: "" })); }}
                   placeholder="Calle, sector, ciudad"
-                  className="w-full rounded-lg border border-[#1e2a3a] bg-[#0d1520] px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-cyan-500"
+                  className={`w-full rounded-lg border bg-[#0d1520] px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-cyan-500 ${errores.direccion ? "border-red-500" : "border-[#1e2a3a]"}`}
                 />
+                {errores.direccion && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
+                    <AlertCircle className="h-3 w-3" />{errores.direccion}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-400">
@@ -243,7 +292,7 @@ export default function CartDrawer() {
             ) : (
               <button
                 onClick={handlePedido}
-                disabled={!nombre || !telefono || !direccion || enviando}
+                disabled={enviando}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <MessageCircle className="h-5 w-5" />

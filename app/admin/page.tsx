@@ -60,6 +60,16 @@ export default async function AdminPage() {
       color: "text-cyan-400",
       bg: "bg-cyan-400/10",
       href: "/admin/pedidos",
+      urgente: stats.pedidosPendientes > 0,
+    },
+    {
+      titulo: "Pedidos hoy",
+      valor: stats.pedidosHoy,
+      icono: TrendingUp,
+      color: "text-green-400",
+      bg: "bg-green-400/10",
+      href: "/admin/pedidos",
+      urgente: false,
     },
     {
       titulo: "Sin stock",
@@ -68,14 +78,7 @@ export default async function AdminPage() {
       color: "text-red-400",
       bg: "bg-red-400/10",
       href: "/admin/productos",
-    },
-    {
-      titulo: "Ventas totales",
-      valor: `RD$${stats.ventasTotales.toLocaleString("es-DO")}`,
-      icono: TrendingUp,
-      color: "text-green-400",
-      bg: "bg-green-400/10",
-      href: "/admin/pedidos",
+      urgente: stats.sinStock > 0,
     },
   ];
 
@@ -101,7 +104,11 @@ export default async function AdminPage() {
             <Link
               key={card.titulo}
               href={card.href}
-              className="rounded-xl border border-[#1e2a3a] bg-[#0d1520] p-5 transition hover:border-[#2a3a4a]"
+              className={`rounded-xl border bg-[#0d1520] p-5 transition hover:border-[#2a3a4a] ${
+                card.urgente
+                  ? "border-red-500/30 hover:border-red-500/50"
+                  : "border-[#1e2a3a]"
+              }`}
             >
               <div className={`mb-3 inline-flex rounded-lg p-2 ${card.bg}`}>
                 <Icon className={`h-5 w-5 ${card.color}`} />
@@ -111,6 +118,17 @@ export default async function AdminPage() {
             </Link>
           );
         })}
+      </div>
+
+      {/* Resumen ventas */}
+      <div className="mb-6 rounded-xl border border-[#1e2a3a] bg-[#0d1520] px-5 py-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+          Ventas totales acumuladas
+        </p>
+        <p className="mt-1 text-3xl font-bold text-white">
+          RD${stats.ventasTotales.toLocaleString("es-DO")}
+        </p>
+        <p className="text-xs text-gray-600">Excluye pedidos cancelados</p>
       </div>
 
       {/* Alertas */}

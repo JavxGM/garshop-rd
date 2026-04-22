@@ -4,15 +4,16 @@ import { useState, useEffect, ReactNode } from "react";
 import { Cpu, Lock } from "lucide-react";
 
 export default function AdminAuthGuard({ children }: { children: ReactNode }) {
-  const [autenticado, setAutenticado] = useState(false);
+  // Inicializamos como null para representar "todavía no sabemos" (hidratación pendiente)
+  const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
-  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    const ok = sessionStorage.getItem("garshop_admin") === "true";
-    setAutenticado(ok);
-    setCargando(false);
+    // sessionStorage solo está disponible en el cliente (API de plataforma externa).
+    // Este es el patrón correcto para sincronizar estado inicial con APIs del browser.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAutenticado(sessionStorage.getItem("garshop_admin") === "true");
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -27,7 +28,8 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
     }
   };
 
-  if (cargando) return null;
+  // null = hidratación pendiente, evita flash del login form en SSR
+  if (autenticado === null) return null;
 
   if (!autenticado) {
     return (

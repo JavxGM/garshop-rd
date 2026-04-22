@@ -16,7 +16,7 @@ export default function AdminLayout({
     <AdminAuthGuard>
       <div className="flex min-h-screen bg-[#060c14]">
         <AdminSidebar />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
     </AdminAuthGuard>
   );

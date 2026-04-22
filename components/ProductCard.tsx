@@ -5,17 +5,27 @@ import { useCart } from "@/context/CartContext";
 import { ShoppingCart, ImageOff } from "lucide-react";
 import Image from "next/image";
 
+const CATEGORIA_LABELS: Record<string, string> = {
+  microfono: "Micrófono",
+  adaptador: "Adaptador",
+  cable: "Cable",
+  audio: "Audio",
+  accesorios: "Accesorios",
+  otro: "Otro",
+};
+
 interface Props {
   producto: Producto;
+  priority?: boolean;
 }
 
-export default function ProductCard({ producto }: Props) {
+export default function ProductCard({ producto, priority = false }: Props) {
   const { agregar } = useCart();
 
   const sinStock = producto.stock === 0;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border border-[#1e2a3a] bg-[#0d1520] transition hover:border-cyan-500/40">
+    <div className="group flex flex-col overflow-hidden rounded-xl border border-[#1e2a3a] bg-[#0d1520] transition hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/5">
       {/* Imagen */}
       <div className="relative aspect-square w-full overflow-hidden bg-[#111c2a]">
         {producto.imagen_url ? (
@@ -23,6 +33,7 @@ export default function ProductCard({ producto }: Props) {
             src={producto.imagen_url}
             alt={producto.nombre}
             fill
+            priority={priority}
             className="object-cover transition group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
@@ -48,7 +59,7 @@ export default function ProductCard({ producto }: Props) {
       {/* Info */}
       <div className="flex flex-1 flex-col p-3">
         <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-cyan-400/80">
-          {producto.categoria}
+          {CATEGORIA_LABELS[producto.categoria] ?? producto.categoria}
         </p>
         <h3 className="mb-1 text-sm font-semibold leading-tight text-white line-clamp-2">
           {producto.nombre}

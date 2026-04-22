@@ -104,9 +104,14 @@ export default function PedidosAdmin({
               >
                 <div className="flex items-center gap-3">
                   <div>
-                    <p className="font-semibold text-white">
-                      {pedido.cliente_nombre}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-white">
+                        {pedido.cliente_nombre}
+                      </p>
+                      <span className="rounded bg-[#1a2535] px-1.5 py-0.5 text-xs font-mono text-gray-500">
+                        #{pedido.id.slice(0, 6).toUpperCase()}
+                      </span>
+                    </div>
                     <p className="text-xs text-gray-500">
                       {new Date(pedido.created_at).toLocaleDateString("es-DO", {
                         day: "numeric",

@@ -286,8 +286,8 @@ export default function ProductosAdmin({
             className="fixed inset-0 z-50 bg-black/60"
             onClick={cerrar}
           />
-          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[#1e2a3a] bg-[#0d1520] p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="fixed inset-x-4 bottom-4 top-4 z-50 mx-auto flex max-w-md flex-col overflow-hidden rounded-2xl border border-[#1e2a3a] bg-[#0d1520] shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[90vh] sm:-translate-x-1/2 sm:-translate-y-1/2">
+            <div className="flex shrink-0 items-center justify-between border-b border-[#1e2a3a] px-6 py-4">
               <h2 className="text-lg font-bold text-white">
                 {editando ? "Editar producto" : "Nuevo producto"}
               </h2>
@@ -296,6 +296,7 @@ export default function ProductosAdmin({
               </button>
             </div>
 
+            <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-400">
@@ -402,7 +403,10 @@ export default function ProductosAdmin({
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            </div>
+
+            <div className="shrink-0 border-t border-[#1e2a3a] px-6 py-4">
+            <div className="flex gap-3">
               <button
                 onClick={cerrar}
                 className="flex-1 rounded-xl border border-[#1e2a3a] py-2.5 text-sm font-medium text-gray-400 transition hover:bg-[#1a2535]"
@@ -417,6 +421,7 @@ export default function ProductosAdmin({
                 <Check className="h-4 w-4" />
                 {guardando ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
               </button>
+            </div>
             </div>
           </div>
         </>
