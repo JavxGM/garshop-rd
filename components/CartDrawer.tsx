@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { generarMensajeWhatsApp } from "@/lib/whatsapp";
-import { supabase } from "@/lib/supabase";
 import { X, Trash2, Plus, Minus, ShoppingCart, MessageCircle, AlertCircle } from "lucide-react";
 
 // Valida teléfonos dominicanos: 809, 829, 849 con o sin prefijo 1
@@ -41,35 +40,47 @@ export default function CartDrawer() {
   const handlePedido = async () => {
     if (!validar() || enviando) return;
     setEnviando(true);
+
     try {
-      const { error } = await supabase.from("garshop_pedidos").insert({
-        cliente_nombre: nombre.trim(),
-        cliente_telefono: telefono.trim(),
-        cliente_direccion: direccion.trim(),
-        items,
-        total,
-        estado: "pendiente",
-        notas: notas.trim() || null,
+      const res = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clienteNombre: nombre.trim(),
+          clienteTelefono: telefono.trim(),
+          clienteDireccion: direccion.trim(),
+          items,
+          total,
+          notas: notas.trim() || undefined,
+        }),
       });
-      if (error) {
-        console.error("Error guardando pedido en Supabase:", error.message);
-        // El pedido continúa hacia WhatsApp aunque falle Supabase
+
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "Error desconocido" }));
+        console.error("Error guardando pedido:", error);
+        // El pedido continúa hacia WhatsApp aunque falle el servidor
       }
     } catch (err) {
       console.error("Error guardando pedido:", err);
-    } finally {
-      const url = generarMensajeWhatsApp(items, nombre.trim(), telefono.trim(), direccion.trim(), notas.trim());
-      window.open(url, "_blank");
-      limpiar();
-      setPaso("carrito");
-      setNombre("");
-      setTelefono("");
-      setDireccion("");
-      setNotas("");
-      setErrores({});
-      setAbierto(false);
-      setEnviando(false);
     }
+
+    const url = generarMensajeWhatsApp(
+      items,
+      nombre.trim(),
+      telefono.trim(),
+      direccion.trim(),
+      notas.trim()
+    );
+    window.open(url, "_blank");
+    limpiar();
+    setPaso("carrito");
+    setNombre("");
+    setTelefono("");
+    setDireccion("");
+    setNotas("");
+    setErrores({});
+    setAbierto(false);
+    setEnviando(false);
   };
 
   const handleCerrar = () => {
