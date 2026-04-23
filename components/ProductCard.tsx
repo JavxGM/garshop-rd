@@ -4,6 +4,7 @@ import { Producto } from "@/lib/types";
 import { useCart } from "@/context/CartContext";
 import { ShoppingCart, ImageOff } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   microfono: "Micrófono",
@@ -26,8 +27,8 @@ export default function ProductCard({ producto, priority = false }: Props) {
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-xl border border-[#1e2a3a] bg-[#0d1520] transition hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/5">
-      {/* Imagen */}
-      <div className="relative aspect-square w-full overflow-hidden bg-[#111c2a]">
+      {/* Imagen — clickeable al detalle */}
+      <Link href={`/productos/${producto.id}`} className="relative block aspect-square w-full overflow-hidden bg-[#111c2a]" tabIndex={-1} aria-hidden="true">
         {producto.imagen_url ? (
           <Image
             src={producto.imagen_url}
@@ -54,16 +55,19 @@ export default function ProductCard({ producto, priority = false }: Props) {
             ¡Últimas {producto.stock}!
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Info */}
       <div className="flex flex-1 flex-col p-3">
         <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-cyan-400/80">
           {CATEGORIA_LABELS[producto.categoria] ?? producto.categoria}
         </p>
-        <h3 className="mb-1 text-sm font-semibold leading-tight text-white line-clamp-2">
-          {producto.nombre}
-        </h3>
+        {/* Nombre clickeable al detalle */}
+        <Link href={`/productos/${producto.id}`}>
+          <h3 className="mb-1 text-sm font-semibold leading-tight text-white line-clamp-2 hover:text-cyan-300 transition-colors">
+            {producto.nombre}
+          </h3>
+        </Link>
         {producto.descripcion && (
           <p className="mb-3 text-xs leading-relaxed text-gray-500 line-clamp-2">
             {producto.descripcion}

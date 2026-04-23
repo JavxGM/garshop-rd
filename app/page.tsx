@@ -1,31 +1,24 @@
 export const dynamic = "force-dynamic";
 
 import { supabase } from "@/lib/supabase";
-import { Producto, Categoria } from "@/lib/types";
+import { Producto } from "@/lib/types";
 import Navbar from "@/components/Navbar";
-import ProductCard from "@/components/ProductCard";
 import CartDrawer from "@/components/CartDrawer";
+import CatalogoClient from "@/components/CatalogoClient";
 import { Cpu, MessageCircle, MapPin, Clock, ShoppingCart, CheckCircle, Truck } from "lucide-react";
 
-const CATEGORIAS: { valor: Categoria; etiqueta: string; emoji: string }[] = [
-  { valor: "microfono", etiqueta: "Micrófonos", emoji: "🎙️" },
-  { valor: "adaptador", etiqueta: "Adaptadores", emoji: "🔌" },
-  { valor: "cable", etiqueta: "Cables", emoji: "🔋" },
-  { valor: "audio", etiqueta: "Audio", emoji: "🎧" },
-  { valor: "accesorios", etiqueta: "Accesorios", emoji: "🖥️" },
-  { valor: "otro", etiqueta: "Otros", emoji: "📦" },
-];
-
+// Solo campos públicos — precio_compra excluido
 async function getProductos(): Promise<Producto[]> {
   try {
     const { data, error } = await supabase
       .from("garshop_productos")
-      .select("*")
+      .select("id, nombre, descripcion, precio_venta, stock, imagen_url, categoria, activo, created_at")
       .eq("activo", true)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data ?? [];
+    // precio_compra no viene del query — lo rellenamos con null para satisfacer el tipo
+    return (data ?? []).map((p) => ({ ...p, precio_compra: null })) as Producto[];
   } catch {
     return [];
   }
@@ -33,12 +26,6 @@ async function getProductos(): Promise<Producto[]> {
 
 export default async function HomePage() {
   const productos = await getProductos();
-
-  const productosPorCategoria = CATEGORIAS.map((cat) => ({
-    ...cat,
-    productos: productos.filter((p) => p.categoria === cat.valor),
-  })).filter((cat) => cat.productos.length > 0);
-
   const whatsapp = process.env.NEXT_PUBLIC_GARSHOP_WHATSAPP_NUMBER ?? "";
 
   return (
@@ -131,28 +118,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Categorías */}
-      <section id="categorias" className="mx-auto max-w-6xl px-4 py-12">
-        <h2 className="mb-6 text-xl font-bold text-white">Categorías</h2>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-          {CATEGORIAS.map((cat) => (
-            <a
-              key={cat.valor}
-              href={`#cat-${cat.valor}`}
-              className="flex flex-col items-center gap-2 rounded-xl border border-[#1e2a3a] bg-[#0d1520] p-4 text-center transition hover:border-cyan-500/50 hover:bg-[#111c2a]"
-            >
-              <span className="text-2xl">{cat.emoji}</span>
-              <span className="text-xs font-medium text-gray-300">
-                {cat.etiqueta}
-              </span>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* Productos */}
-      <section id="productos" className="mx-auto max-w-6xl px-4 pb-16">
-        {productos.length === 0 ? (
+      {/* Catálogo: buscador + filtros + grilla — delegado a CatalogoClient */}
+      {productos.length === 0 ? (
+        <section id="productos" className="mx-auto max-w-6xl px-4 pb-16 pt-12">
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <Cpu className="mb-4 h-16 w-16 text-gray-700" />
             <h3 className="mb-2 text-lg font-semibold text-gray-400">
@@ -172,28 +140,10 @@ export default async function HomePage() {
               WhatsApp
             </a>
           </div>
-        ) : (
-          <>
-            {productosPorCategoria.map((cat) => (
-              <div key={cat.valor} id={`cat-${cat.valor}`} className="mb-12">
-                <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-white">
-                  <span>{cat.emoji}</span>
-                  {cat.etiqueta}
-                </h2>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                  {cat.productos.map((producto, i) => (
-                    <ProductCard
-                      key={producto.id}
-                      producto={producto}
-                      priority={i < 4 && cat.valor === productosPorCategoria[0]?.valor}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-      </section>
+        </section>
+      ) : (
+        <CatalogoClient productos={productos} />
+      )}
 
       {/* Contacto */}
       <section
