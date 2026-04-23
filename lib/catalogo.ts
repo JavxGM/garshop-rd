@@ -133,4 +133,24 @@ export const CATALOGO_INICIAL: ProductoSemilla[] = [
     categoria: "accesorios",
     activo: true,
   },
+  // Adaptadores (continuación)
+  {
+    nombre: "Adaptador HDMI a VGA",
+    descripcion: "Adaptador HDMI macho a VGA hembra. Conecta laptops y PCs modernos a monitores y proyectores con entrada VGA. Resolución hasta 1080p@60Hz. Plug & play, sin drivers. Ideal para oficinas y aulas.",
+    precio: 650,
+    stock: 15,
+    imagen_url: null,
+    categoria: "adaptador",
+    activo: true,
+  },
+  // Micrófonos (continuación)
+  {
+    nombre: "Micrófono K8 para Teléfono",
+    descripcion: "Micrófono de solapa (lavalier) con conector de 3.5mm TRRS para smartphones. Clip compacto, omnidireccional, cable 1.5m. Ideal para creadores de contenido, entrevistas y reels. Compatible con iPhone y Android.",
+    precio: 850,
+    stock: 20,
+    imagen_url: null,
+    categoria: "microfono",
+    activo: true,
+  },
 ];
