@@ -41,6 +41,28 @@ export default function CartDrawer() {
     if (!validar() || enviando) return;
     setEnviando(true);
 
+    // Construir la URL de WhatsApp primero — si el número no está configurado
+    // fallamos aquí con un mensaje claro antes de guardar nada.
+    let url: string;
+    try {
+      url = generarMensajeWhatsApp(
+        items,
+        nombre.trim(),
+        telefono.trim(),
+        direccion.trim(),
+        notas.trim()
+      );
+    } catch (err) {
+      console.error("Error generando URL de WhatsApp:", err);
+      setErrores((prev) => ({
+        ...prev,
+        _global:
+          "No se pudo generar el enlace de WhatsApp. Contacta al administrador.",
+      }));
+      setEnviando(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/pedidos", {
         method: "POST",
@@ -64,13 +86,6 @@ export default function CartDrawer() {
       console.error("Error guardando pedido:", err);
     }
 
-    const url = generarMensajeWhatsApp(
-      items,
-      nombre.trim(),
-      telefono.trim(),
-      direccion.trim(),
-      notas.trim()
-    );
     window.open(url, "_blank");
     limpiar();
     setPaso("carrito");
@@ -301,14 +316,22 @@ export default function CartDrawer() {
                 </button>
               </>
             ) : (
-              <button
-                onClick={handlePedido}
-                disabled={enviando}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <MessageCircle className="h-5 w-5" />
-                {enviando ? "Enviando..." : "Enviar pedido por WhatsApp"}
-              </button>
+              <>
+                {errores._global && (
+                  <p className="mb-3 flex items-center gap-1 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    {errores._global}
+                  </p>
+                )}
+                <button
+                  onClick={handlePedido}
+                  disabled={enviando}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  {enviando ? "Enviando..." : "Enviar pedido por WhatsApp"}
+                </button>
+              </>
             )}
           </div>
         )}
