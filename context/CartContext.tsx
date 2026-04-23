@@ -55,7 +55,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const limpiar = () => setItems([]);
 
   const total = items.reduce(
-    (acc, i) => acc + i.producto.precio * i.cantidad,
+    (acc, i) => acc + i.producto.precio_venta * i.cantidad,
     0
   );
 

@@ -161,7 +161,7 @@ export default function CartDrawer() {
                           {item.producto.nombre}
                         </p>
                         <p className="text-xs text-cyan-400">
-                          RD${item.producto.precio.toLocaleString("es-DO")} c/u
+                          RD${item.producto.precio_venta.toLocaleString("es-DO")} c/u
                         </p>
                         <div className="mt-1 flex items-center gap-2">
                           <button
@@ -195,7 +195,7 @@ export default function CartDrawer() {
                         </button>
                         <p className="text-sm font-bold text-white">
                           RD$
-                          {(item.producto.precio * item.cantidad).toLocaleString("es-DO")}
+                          {(item.producto.precio_venta * item.cantidad).toLocaleString("es-DO")}
                         </p>
                       </div>
                     </div>
@@ -282,7 +282,7 @@ export default function CartDrawer() {
                       {item.cantidad}x {item.producto.nombre}
                     </span>
                     <span className="text-xs font-medium text-white">
-                      RD${(item.producto.precio * item.cantidad).toLocaleString("es-DO")}
+                      RD${(item.producto.precio_venta * item.cantidad).toLocaleString("es-DO")}
                     </span>
                   </div>
                 ))}

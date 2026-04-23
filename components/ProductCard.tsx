@@ -72,7 +72,7 @@ export default function ProductCard({ producto, priority = false }: Props) {
 
         <div className="mt-auto flex items-center justify-between gap-2">
           <span className="text-base font-bold text-white">
-            RD${producto.precio.toLocaleString("es-DO")}
+            RD${producto.precio_venta.toLocaleString("es-DO")}
           </span>
           <button
             onClick={() => agregar(producto)}

@@ -7,7 +7,7 @@ import Link from "next/link";
 async function getStats() {
   try {
     const [{ data: productos }, { data: pedidos }] = await Promise.all([
-      supabase.from("garshop_productos").select("id, stock, precio, activo"),
+      supabase.from("garshop_productos").select("id, stock, activo"),
       supabase.from("garshop_pedidos").select("id, total, estado, created_at"),
     ]);
 

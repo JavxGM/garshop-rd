@@ -32,11 +32,11 @@ export function generarMensajeWhatsApp(
 
   const lineas = items.map(
     (item) =>
-      `• ${item.cantidad}x ${item.producto.nombre} — RD$${(item.producto.precio * item.cantidad).toLocaleString("es-DO")}`
+      `• ${item.cantidad}x ${item.producto.nombre} — RD$${(item.producto.precio_venta * item.cantidad).toLocaleString("es-DO")}`
   );
 
   const total = items.reduce(
-    (acc, item) => acc + item.producto.precio * item.cantidad,
+    (acc, item) => acc + item.producto.precio_venta * item.cantidad,
     0
   );
 

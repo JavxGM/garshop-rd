@@ -170,7 +170,7 @@ export default function PedidosAdmin({
                         </span>
                         <span className="font-medium text-white">
                           RD$
-                          {(item.producto.precio * item.cantidad).toLocaleString(
+                          {(item.producto.precio_venta * item.cantidad).toLocaleString(
                             "es-DO"
                           )}
                         </span>
