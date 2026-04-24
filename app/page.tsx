@@ -12,13 +12,31 @@ async function getProductos(): Promise<Producto[]> {
   try {
     const { data, error } = await supabase
       .from("garshop_productos")
-      .select("id, nombre, descripcion, precio_venta, stock, imagen_url, categoria, activo, created_at")
+      .select(`
+        id, nombre, descripcion, precio_venta, stock, imagen_url, categoria, activo, created_at,
+        garshop_producto_imagenes!producto_id(url, orden, es_principal)
+      `)
       .eq("activo", true)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    // precio_compra no viene del query — lo rellenamos con null para satisfacer el tipo
-    return (data ?? []).map((p) => ({ ...p, precio_compra: null })) as Producto[];
+
+    return (data ?? []).map((p) => {
+      const imgs = (p.garshop_producto_imagenes ?? []) as {
+        url: string;
+        orden: number;
+        es_principal: boolean;
+      }[];
+      const ordenadas = [...imgs].sort((a, b) => a.orden - b.orden);
+      const principal = ordenadas.find((i) => i.es_principal)?.url ?? ordenadas[0]?.url ?? null;
+      return {
+        ...p,
+        precio_compra: null,
+        imagen_principal: principal,
+        imagenes: ordenadas.map((i) => i.url),
+        // imagen_url queda como fallback si imagen_principal es null
+      } satisfies Producto;
+    });
   } catch {
     return [];
   }

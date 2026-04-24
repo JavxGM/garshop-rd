@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Producto, Categoria } from "@/lib/types";
+import { useState, useCallback } from "react";
+import { Producto, ProductoImagen, Categoria } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import {
   Plus,
@@ -13,13 +13,8 @@ import {
   Package,
   Download,
   Lock,
-  Upload,
-  ImageIcon,
-  Loader2,
 } from "lucide-react";
-
-const TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp"];
-const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5 MB
+import ImagenesProductoUpload from "./ImagenesProductoUpload";
 
 const CATEGORIAS: { valor: Categoria; etiqueta: string }[] = [
   { valor: "microfono", etiqueta: "Micrófono" },
@@ -30,7 +25,7 @@ const CATEGORIAS: { valor: Categoria; etiqueta: string }[] = [
   { valor: "otro", etiqueta: "Otro" },
 ];
 
-type FormState = Omit<Producto, "id" | "created_at">;
+type FormState = Omit<Producto, "id" | "created_at" | "imagen_principal" | "imagenes">;
 
 const VACIO: FormState = {
   nombre: "",
@@ -66,80 +61,26 @@ export default function ProductosAdmin({
   const [guardando, setGuardando] = useState(false);
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(false);
-
-  // Estados del upload de imagen
-  const [archivoImagen, setArchivoImagen] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [subiendoImagen, setSubiendoImagen] = useState(false);
-  const [errorImagen, setErrorImagen] = useState<string | null>(null);
-  const inputFileRef = useRef<HTMLInputElement>(null);
+  // ID del producto una vez creado (para poder subir imágenes antes de cerrar el modal)
+  const [productoGuardadoId, setProductoGuardadoId] = useState<string | null>(null);
+  // Imágenes actuales del producto en edición
+  const [imagenesProducto, setImagenesProducto] = useState<ProductoImagen[]>([]);
 
   const limpiarImagen = useCallback(() => {
-    setArchivoImagen(null);
-    setErrorImagen(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-    if (inputFileRef.current) {
-      inputFileRef.current.value = "";
-    }
-  }, [previewUrl]);
-
-  const handleArchivoSeleccionado = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
-
-    setErrorImagen(null);
-
-    if (!TIPOS_PERMITIDOS.includes(archivo.type)) {
-      setErrorImagen("Solo se permiten imágenes JPEG, PNG o WebP.");
-      e.target.value = "";
-      return;
-    }
-
-    if (archivo.size > TAMANO_MAXIMO_BYTES) {
-      setErrorImagen("La imagen no puede superar los 5 MB.");
-      e.target.value = "";
-      return;
-    }
-
-    // Revocar el object URL anterior si existe
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-
-    const nuevoPreview = URL.createObjectURL(archivo);
-    setArchivoImagen(archivo);
-    setPreviewUrl(nuevoPreview);
-    // Limpiar URL manual si el admin elige subir un archivo
-    setForm((prev) => ({ ...prev, imagen_url: null }));
-  };
-
-  const subirImagenAStorage = async (archivo: File): Promise<string> => {
-    const extension = archivo.name.split(".").pop() ?? "jpg";
-    const nombreArchivo = `${crypto.randomUUID()}.${extension}`;
-
-    const { error } = await supabase.storage
-      .from("garshop-productos")
-      .upload(nombreArchivo, archivo, { contentType: archivo.type });
-
-    if (error) throw new Error(`Error al subir imagen: ${error.message}`);
-
-    const { data: urlData } = supabase.storage
-      .from("garshop-productos")
-      .getPublicUrl(nombreArchivo);
-
-    return urlData.publicUrl;
-  };
+    // No-op: la gestión de imágenes ahora la maneja ImagenesProductoUpload
+  }, []);
 
   const abrirCrear = () => {
     setEditando(null);
     setForm(VACIO);
-    limpiarImagen();
+    setProductoGuardadoId(null);
+    setImagenesProducto([]);
     setModalAbierto(true);
   };
 
   const abrirEditar = (p: Producto) => {
     setEditando(p);
+    setProductoGuardadoId(p.id);
     setForm({
       nombre: p.nombre,
       descripcion: p.descripcion,
@@ -150,38 +91,34 @@ export default function ProductosAdmin({
       categoria: p.categoria,
       activo: p.activo,
     });
-    limpiarImagen();
+    // Cargar imágenes del producto desde BD
+    cargarImagenesProducto(p.id);
     setModalAbierto(true);
+  };
+
+  const cargarImagenesProducto = async (productoId: string) => {
+    const { data } = await supabase
+      .from("garshop_producto_imagenes")
+      .select("*")
+      .eq("producto_id", productoId)
+      .order("orden", { ascending: true });
+    setImagenesProducto((data as ProductoImagen[]) ?? []);
   };
 
   const cerrar = () => {
     setModalAbierto(false);
     setEditando(null);
+    setProductoGuardadoId(null);
+    setImagenesProducto([]);
     limpiarImagen();
   };
 
   const guardar = async () => {
     if (!form.nombre || form.precio_venta <= 0) return;
     setGuardando(true);
-    setErrorImagen(null);
 
     try {
-      let imagenUrl = form.imagen_url;
-
-      // Si hay un archivo pendiente, subirlo primero
-      if (archivoImagen) {
-        setSubiendoImagen(true);
-        try {
-          imagenUrl = await subirImagenAStorage(archivoImagen);
-        } catch (err) {
-          setErrorImagen((err as Error).message);
-          return;
-        } finally {
-          setSubiendoImagen(false);
-        }
-      }
-
-      const payload: FormState = { ...form, imagen_url: imagenUrl };
+      const payload: FormState = { ...form };
 
       if (editando) {
         const { data, error } = await supabase
@@ -192,8 +129,9 @@ export default function ProductosAdmin({
           .single();
         if (error) throw error;
         setProductos((prev) =>
-          prev.map((p) => (p.id === editando.id ? data : p))
+          prev.map((p) => (p.id === editando.id ? { ...data, imagenes: p.imagenes, imagen_principal: p.imagen_principal } : p))
         );
+        cerrar();
       } else {
         const { data, error } = await supabase
           .from("garshop_productos")
@@ -201,9 +139,12 @@ export default function ProductosAdmin({
           .select()
           .single();
         if (error) throw error;
+        // Para producto nuevo: quedarse en el modal para poder subir imágenes
         setProductos((prev) => [data, ...prev]);
+        setEditando(data);
+        setProductoGuardadoId(data.id);
+        // El modal permanece abierto — el admin ahora puede agregar imágenes
       }
-      cerrar();
     } catch (err) {
       console.error(err);
     } finally {
@@ -558,116 +499,31 @@ export default function ProductosAdmin({
                   />
                 </div>
 
-                {/* Imagen del producto */}
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-gray-400">
-                    Imagen del producto (opcional)
-                  </label>
-
-                  {/* Zona de upload */}
-                  <div className="space-y-3">
-                    {/* Preview del archivo seleccionado */}
-                    {previewUrl && (
-                      <div className="relative overflow-hidden rounded-lg border border-[#1e2a3a]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={previewUrl}
-                          alt="Preview"
-                          className="h-36 w-full object-contain bg-[#060c14]"
-                        />
-                        <button
-                          type="button"
-                          onClick={limpiarImagen}
-                          className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-gray-300 hover:text-white transition"
-                          aria-label="Quitar imagen"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                        <div className="px-3 py-1.5 bg-[#060c14] border-t border-[#1e2a3a]">
-                          <p className="truncate text-xs text-gray-500">{archivoImagen?.name}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Preview de URL externa cuando no hay archivo */}
-                    {!previewUrl && form.imagen_url && (
-                      <div className="relative overflow-hidden rounded-lg border border-[#1e2a3a]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={form.imagen_url}
-                          alt="Preview URL"
-                          className="h-36 w-full object-contain bg-[#060c14]"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Botón de subir archivo */}
-                    <div>
-                      <input
-                        ref={inputFileRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={handleArchivoSeleccionado}
-                        className="sr-only"
-                        id="upload-imagen"
-                      />
-                      <label
-                        htmlFor="upload-imagen"
-                        className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-sm font-medium transition ${
-                          archivoImagen
-                            ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20"
-                            : "border-[#1e2a3a] bg-[#060c14] text-gray-400 hover:border-cyan-500/40 hover:text-gray-300"
-                        }`}
-                      >
-                        {subiendoImagen ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Subiendo...
-                          </>
-                        ) : archivoImagen ? (
-                          <>
-                            <ImageIcon className="h-4 w-4" />
-                            Cambiar imagen
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4" />
-                            Subir imagen (JPEG, PNG, WebP · máx. 5 MB)
-                          </>
-                        )}
-                      </label>
-                    </div>
-
-                    {/* Error de imagen */}
-                    {errorImagen && (
-                      <p className="flex items-center gap-1.5 text-xs text-red-400">
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                        {errorImagen}
-                      </p>
-                    )}
-
-                    {/* Separador */}
-                    <div className="flex items-center gap-2">
-                      <div className="h-px flex-1 bg-[#1e2a3a]" />
-                      <span className="text-xs text-gray-600">o pega una URL</span>
-                      <div className="h-px flex-1 bg-[#1e2a3a]" />
-                    </div>
-
-                    {/* Campo URL manual como fallback */}
-                    <input
-                      value={archivoImagen ? "" : (form.imagen_url ?? "")}
-                      onChange={(e) => {
-                        // Si el admin escribe una URL, descarta el archivo
-                        if (e.target.value && archivoImagen) limpiarImagen();
-                        setForm({ ...form, imagen_url: e.target.value || null });
-                      }}
-                      disabled={!!archivoImagen}
-                      className="w-full rounded-lg border border-[#1e2a3a] bg-[#060c14] px-3 py-2 text-sm text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
-                      placeholder="https://..."
-                    />
+                {/* Imágenes del producto */}
+                {productoGuardadoId ? (
+                  <ImagenesProductoUpload
+                    productoId={productoGuardadoId}
+                    imagenesIniciales={imagenesProducto}
+                    onCambio={(nuevas) => {
+                      setImagenesProducto(nuevas);
+                      // Sincronizar imagen_principal en la lista de productos
+                      const principal = nuevas.find((i) => i.es_principal)?.url ?? nuevas[0]?.url ?? null;
+                      setProductos((prev) =>
+                        prev.map((p) =>
+                          p.id === productoGuardadoId
+                            ? { ...p, imagen_principal: principal, imagenes: nuevas.map((i) => i.url) }
+                            : p
+                        )
+                      );
+                    }}
+                  />
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#1e2a3a] bg-[#060c14] px-4 py-5 text-center">
+                    <p className="text-xs text-gray-500">
+                      Guarda el producto primero para poder subir imágenes.
+                    </p>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-center gap-2">
                   <input
@@ -692,14 +548,25 @@ export default function ProductosAdmin({
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={guardar}
-                  disabled={guardando || !form.nombre || form.precio_venta <= 0}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-500 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-600 disabled:opacity-50"
-                >
-                  <Check className="h-4 w-4" />
-                  {guardando ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
-                </button>
+                {productoGuardadoId && !editando ? (
+                  // Producto recién creado: mostrar botón "Listo" para cerrar
+                  <button
+                    onClick={cerrar}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-500 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-600"
+                  >
+                    <Check className="h-4 w-4" />
+                    Listo
+                  </button>
+                ) : (
+                  <button
+                    onClick={guardar}
+                    disabled={guardando || !form.nombre || form.precio_venta <= 0}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-500 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-600 disabled:opacity-50"
+                  >
+                    <Check className="h-4 w-4" />
+                    {guardando ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
+                  </button>
+                )}
               </div>
             </div>
           </div>

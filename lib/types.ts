@@ -6,6 +6,15 @@ export type Categoria =
   | "accesorios"
   | "otro";
 
+export interface ProductoImagen {
+  id: string;
+  producto_id: string;
+  url: string;
+  orden: number;
+  es_principal: boolean;
+  created_at: string;
+}
+
 export interface Producto {
   id: string;
   nombre: string;
@@ -14,6 +23,8 @@ export interface Producto {
   precio_compra: number | null;
   stock: number;
   imagen_url: string | null;
+  imagen_principal?: string | null;
+  imagenes?: string[];
   categoria: Categoria;
   activo: boolean;
   created_at: string;

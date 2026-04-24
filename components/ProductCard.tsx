@@ -29,13 +29,13 @@ export default function ProductCard({ producto, priority = false }: Props) {
     <div className="group flex flex-col overflow-hidden rounded-xl border border-[#1e2a3a] bg-[#0d1520] transition hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/5">
       {/* Imagen — clickeable al detalle */}
       <Link href={`/productos/${producto.id}`} className="relative block aspect-square w-full overflow-hidden bg-[#111c2a]" tabIndex={-1} aria-hidden="true">
-        {producto.imagen_url ? (
+        {(producto.imagen_principal ?? producto.imagen_url) ? (
           <Image
-            src={producto.imagen_url}
+            src={(producto.imagen_principal ?? producto.imagen_url)!}
             alt={producto.nombre}
             fill
             priority={priority}
-            className="object-cover transition group-hover:scale-105"
+            className="object-contain transition group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
         ) : (

@@ -26,13 +26,29 @@ async function getProducto(id: string): Promise<ProductoPublico | null> {
   try {
     const { data, error } = await supabase
       .from("garshop_productos")
-      .select("id, nombre, descripcion, precio_venta, stock, imagen_url, categoria, activo, created_at")
+      .select(`
+        id, nombre, descripcion, precio_venta, stock, imagen_url, categoria, activo, created_at,
+        garshop_producto_imagenes!producto_id(url, orden, es_principal)
+      `)
       .eq("id", id)
       .eq("activo", true)
       .single();
 
     if (error || !data) return null;
-    return data as ProductoPublico;
+
+    const imgs = (data.garshop_producto_imagenes ?? []) as {
+      url: string;
+      orden: number;
+      es_principal: boolean;
+    }[];
+    const ordenadas = [...imgs].sort((a, b) => a.orden - b.orden);
+    const principal = ordenadas.find((i) => i.es_principal)?.url ?? ordenadas[0]?.url ?? null;
+
+    return {
+      ...data,
+      imagen_principal: principal,
+      imagenes: ordenadas.map((i) => i.url),
+    } as ProductoPublico;
   } catch {
     return null;
   }
@@ -73,13 +89,13 @@ export default async function ProductoDetallePage({ params }: PageProps) {
         <div className="grid gap-8 md:grid-cols-2">
           {/* Imagen */}
           <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-[#1e2a3a] bg-[#0d1520]">
-            {producto.imagen_url ? (
+            {(producto.imagen_principal ?? producto.imagen_url) ? (
               <Image
-                src={producto.imagen_url}
+                src={(producto.imagen_principal ?? producto.imagen_url)!}
                 alt={producto.nombre}
                 fill
                 priority
-                className="object-cover"
+                className="object-contain"
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
             ) : (
