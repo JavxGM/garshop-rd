@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 // Canvas de 1000×1000 fondo blanco, el PNG transparente va centrado y compuesto encima
 const CANVAS_SIZE = 1000;
@@ -198,51 +198,56 @@ async function enviarAlertaUsoPorEmail(
 
   if (!fila || fila.alerta_enviada) return;
 
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
-    console.warn("[GarShop] RESEND_API_KEY no configurada — alerta de email omitida");
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  if (!gmailUser || !gmailPass) {
+    console.warn("[GarShop] GMAIL_USER/GMAIL_APP_PASSWORD no configuradas — alerta omitida");
     return;
   }
 
-  const resend = new Resend(resendKey);
   const restantes = 50 - totalProcesadas;
   const mesFormateado = new Date(`${mes}-01`).toLocaleDateString("es-DO", {
     month: "long",
     year: "numeric",
   });
 
-  const { error } = await resend.emails.send({
-    from: "GarShop.rd <notificaciones@garshop.rd>",
-    to: "jgarcia@templaris.com",
-    subject: `GarShop.rd — Alerta: ${totalProcesadas} imágenes procesadas este mes`,
-    html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#0e7490;margin-bottom:8px">Alerta de uso — remove.bg</h2>
-        <p style="color:#374151;margin-bottom:16px">
-          Se han procesado <strong>${totalProcesadas} imágenes</strong> con remove.bg durante ${mesFormateado}.
-        </p>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-          <tr>
-            <td style="padding:8px;border:1px solid #e5e7eb;color:#6b7280">Procesadas este mes</td>
-            <td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">${totalProcesadas} / 50</td>
-          </tr>
-          <tr>
-            <td style="padding:8px;border:1px solid #e5e7eb;color:#6b7280">Restantes</td>
-            <td style="padding:8px;border:1px solid #e5e7eb;font-weight:600;color:${restantes <= 5 ? "#dc2626" : "#059669"}">${restantes}</td>
-          </tr>
-        </table>
-        <p style="color:#6b7280;font-size:14px">
-          Si necesitas procesar más imágenes este mes, puedes subir fotos directamente desde el admin
-          sin usar remove.bg (campo de URL manual) o esperar al próximo mes para que el contador se reinicie.
-        </p>
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0" />
-        <p style="color:#9ca3af;font-size:12px">GarShop.rd — Panel Admin</p>
-      </div>
-    `,
+  const transport = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: gmailUser, pass: gmailPass },
   });
 
-  if (error) {
-    console.error("[GarShop] Error enviando alerta de email:", error);
+  try {
+    await transport.sendMail({
+      from: `"GarShop.rd" <${gmailUser}>`,
+      to: "garciamartinezjavier1004@gmail.com",
+      subject: `GarShop.rd — Alerta: ${totalProcesadas} imágenes procesadas este mes`,
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+          <h2 style="color:#0e7490;margin-bottom:8px">Alerta de uso — remove.bg</h2>
+          <p style="color:#374151;margin-bottom:16px">
+            Se han procesado <strong>${totalProcesadas} imágenes</strong> con remove.bg durante ${mesFormateado}.
+          </p>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+            <tr>
+              <td style="padding:8px;border:1px solid #e5e7eb;color:#6b7280">Procesadas este mes</td>
+              <td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">${totalProcesadas} / 50</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;border:1px solid #e5e7eb;color:#6b7280">Restantes</td>
+              <td style="padding:8px;border:1px solid #e5e7eb;font-weight:600;color:${restantes <= 5 ? "#dc2626" : "#059669"}">${restantes}</td>
+            </tr>
+          </table>
+          <p style="color:#6b7280;font-size:14px">
+            Si necesitas procesar más imágenes este mes, puedes subir fotos directamente desde el admin
+            sin usar remove.bg o esperar al próximo mes para que el contador se reinicie.
+          </p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0" />
+          <p style="color:#9ca3af;font-size:12px">GarShop.rd — Panel Admin</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[GarShop] Error enviando alerta de email:", err);
     return;
   }
 
