@@ -6,9 +6,9 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import CartDrawer from "@/components/CartDrawer";
 import ProductDetailActions from "@/components/ProductDetailActions";
-import Image from "next/image";
+import ProductImageGallery from "@/components/ProductImageGallery";
 import Link from "next/link";
-import { ArrowLeft, ImageOff, Tag } from "lucide-react";
+import { ArrowLeft, Tag } from "lucide-react";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   microfono: "Micrófono",
@@ -103,6 +103,85 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
+// ─── Descripción con formato ──────────────────────────────────────────────────
+// Respeta saltos de línea y detecta líneas que empiezan con "-" o "•" para
+// renderizarlas como lista. No usa dangerouslySetInnerHTML — todo es JSX puro.
+
+function ProductDescription({ texto }: { texto: string }) {
+  const lineas = texto.split(/\r?\n/);
+
+  // Agrupa líneas en bloques: listas (líneas con "-"/"•") y párrafos normales
+  type Bloque =
+    | { tipo: "parrafo"; lineas: string[] }
+    | { tipo: "lista"; items: string[] };
+
+  const bloques: Bloque[] = [];
+  let parrafoActual: string[] = [];
+  let listaActual: string[] = [];
+
+  const flushParrafo = () => {
+    if (parrafoActual.length > 0) {
+      bloques.push({ tipo: "parrafo", lineas: [...parrafoActual] });
+      parrafoActual = [];
+    }
+  };
+  const flushLista = () => {
+    if (listaActual.length > 0) {
+      bloques.push({ tipo: "lista", items: [...listaActual] });
+      listaActual = [];
+    }
+  };
+
+  for (const linea of lineas) {
+    const esItemLista = /^[\-•]\s+/.test(linea.trim());
+    if (esItemLista) {
+      flushParrafo();
+      listaActual.push(linea.trim().replace(/^[\-•]\s+/, ""));
+    } else if (linea.trim() === "") {
+      // Línea vacía separa bloques
+      flushParrafo();
+      flushLista();
+    } else {
+      flushLista();
+      parrafoActual.push(linea);
+    }
+  }
+  flushParrafo();
+  flushLista();
+
+  if (bloques.length === 0) return null;
+
+  return (
+    <div className="space-y-3 text-[0.9375rem] leading-relaxed text-gray-400">
+      {bloques.map((bloque, i) => {
+        if (bloque.tipo === "lista") {
+          return (
+            <ul key={i} className="space-y-1.5 pl-1">
+              {bloque.items.map((item, j) => (
+                <li key={j} className="flex items-start gap-2">
+                  <span className="mt-[0.4em] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500/70" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        // párrafo: múltiples líneas separadas por <br>
+        return (
+          <p key={i}>
+            {bloque.lineas.map((linea, j) => (
+              <span key={j}>
+                {linea}
+                {j < bloque.lineas.length - 1 && <br />}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default async function ProductoDetallePage({ params }: PageProps) {
   const { id } = await params;
   const producto = await getProducto(id);
@@ -115,6 +194,16 @@ export default async function ProductoDetallePage({ params }: PageProps) {
   const productoParaCart = { ...producto, precio_compra: null } satisfies Producto;
 
   const sinStock = producto.stock === 0;
+  const stockBajo = !sinStock && producto.stock <= 5 ? producto.stock : null;
+
+  // Construye el array de imágenes que va a la galería:
+  // usa imagenes[] si existe y tiene al menos una entrada, si no cae al imagen_url legacy
+  const imagenesGaleria: string[] =
+    producto.imagenes && producto.imagenes.length > 0
+      ? producto.imagenes
+      : producto.imagen_url
+      ? [producto.imagen_url]
+      : [];
 
   return (
     <div className="min-h-screen bg-[#0a0f1a]">
@@ -132,38 +221,13 @@ export default async function ProductoDetallePage({ params }: PageProps) {
         </Link>
 
         <div className="grid gap-8 md:grid-cols-2">
-          {/* Imagen */}
-          <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-[#1e2a3a] bg-[#0d1520]">
-            {(producto.imagen_principal ?? producto.imagen_url) ? (
-              <Image
-                src={(producto.imagen_principal ?? producto.imagen_url)!}
-                alt={producto.nombre}
-                fill
-                priority
-                className="object-contain"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-700">
-                <ImageOff className="h-20 w-20" />
-                <p className="text-sm text-gray-600">Sin imagen disponible</p>
-              </div>
-            )}
-
-            {/* Badges sobre imagen */}
-            {sinStock && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-                <span className="rounded-full bg-red-500/90 px-4 py-2 text-sm font-bold text-white">
-                  Agotado
-                </span>
-              </div>
-            )}
-            {!sinStock && producto.stock <= 5 && (
-              <span className="absolute bottom-3 left-3 rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-medium text-white">
-                ¡Últimas {producto.stock} unidades!
-              </span>
-            )}
-          </div>
+          {/* Galería */}
+          <ProductImageGallery
+            imagenes={imagenesGaleria}
+            nombre={producto.nombre}
+            sinStock={sinStock}
+            stockBajo={stockBajo}
+          />
 
           {/* Info */}
           <div className="flex flex-col gap-5">
@@ -188,10 +252,8 @@ export default async function ProductoDetallePage({ params }: PageProps) {
             </div>
 
             {/* Descripción */}
-            {producto.descripcion && (
-              <p className="leading-relaxed text-gray-400">
-                {producto.descripcion}
-              </p>
+            {producto.descripcion && producto.descripcion.trim() && (
+              <ProductDescription texto={producto.descripcion} />
             )}
 
             {/* Stock info */}
