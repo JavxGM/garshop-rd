@@ -78,7 +78,7 @@ export default function ProductosAdmin({
     setModalAbierto(true);
   };
 
-  const abrirEditar = (p: Producto) => {
+  const abrirEditar = async (p: Producto) => {
     setEditando(p);
     setProductoGuardadoId(p.id);
     setForm({
@@ -91,8 +91,7 @@ export default function ProductosAdmin({
       categoria: p.categoria,
       activo: p.activo,
     });
-    // Cargar imágenes del producto desde BD
-    cargarImagenesProducto(p.id);
+    await cargarImagenesProducto(p.id);
     setModalAbierto(true);
   };
 
