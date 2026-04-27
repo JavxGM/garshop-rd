@@ -14,6 +14,7 @@ import {
   ImageOff,
   Wand2,
   Download,
+  ImagePlus,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { ProductoImagen } from "@/lib/types";
@@ -38,6 +39,10 @@ interface Props {
 
 type EstadoProcesamiento = "idle" | "procesando" | "error";
 
+interface EstadoInstagram {
+  [imagenId: string]: "idle" | "generando";
+}
+
 export default function ImagenesProductoUpload({
   productoId,
   imagenesIniciales,
@@ -47,6 +52,7 @@ export default function ImagenesProductoUpload({
   const [estado, setEstado] = useState<EstadoProcesamiento>("idle");
   const [error, setError] = useState<string | null>(null);
   const [progresoTexto, setProgresoTexto] = useState<string>("");
+  const [estadoInstagram, setEstadoInstagram] = useState<EstadoInstagram>({});
   const inputRef = useRef<HTMLInputElement>(null);
 
   const notificar = useCallback(
@@ -269,6 +275,47 @@ export default function ImagenesProductoUpload({
     notificar(restantes);
   };
 
+  const generarTemplateInstagram = async (img: ProductoImagen, nombreProducto?: string) => {
+    if (estadoInstagram[img.id] === "generando") return;
+
+    setEstadoInstagram((prev) => ({ ...prev, [img.id]: "generando" }));
+
+    const password = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "garshop2024";
+
+    try {
+      const res = await fetch("/api/admin/generar-template", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": password,
+        },
+        body: JSON.stringify({ imagenUrl: img.url }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `Error ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const urlDescarga = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = urlDescarga;
+      const nombreBase = nombreProducto
+        ? nombreProducto.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+        : "producto";
+      a.download = `garshop-instagram-${nombreBase}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(urlDescarga);
+    } catch (err) {
+      setError(`Error generando template: ${(err as Error).message}`);
+    } finally {
+      setEstadoInstagram((prev) => ({ ...prev, [img.id]: "idle" }));
+    }
+  };
+
   const puedeAgregar = imagenes.length < MAX_IMAGENES && estado === "idle";
 
   return (
@@ -352,6 +399,18 @@ export default function ImagenesProductoUpload({
                   >
                     <Download className="h-3 w-3" />
                   </a>
+                  <button
+                    onClick={() => generarTemplateInstagram(img)}
+                    disabled={estadoInstagram[img.id] === "generando"}
+                    className="rounded p-0.5 text-gray-400 hover:text-pink-400 disabled:opacity-40"
+                    title="Descargar para Instagram (1080×1350)"
+                  >
+                    {estadoInstagram[img.id] === "generando" ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-3 w-3" />
+                    )}
+                  </button>
                   <button
                     onClick={() => eliminar(img)}
                     disabled={estado === "procesando"}
