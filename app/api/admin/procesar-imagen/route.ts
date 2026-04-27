@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import nodemailer from "nodemailer";
+import heicConvert from "heic-convert";
 
 // Canvas de 1000×1000 fondo blanco, el PNG transparente va centrado y compuesto encima
 const CANVAS_SIZE = 1000;
@@ -19,9 +20,12 @@ function crearSupabaseAdmin() {
   return createClient(url, key);
 }
 
-async function convertirHeicAJpeg(buffer: Buffer, mimeType: string): Promise<Buffer> {
-  if (mimeType === "image/heic" || mimeType === "image/heif") {
-    return sharp(buffer).jpeg({ quality: JPEG_QUALITY }).toBuffer();
+async function convertirHeicAJpeg(buffer: Buffer, mimeType: string, fileName: string): Promise<Buffer> {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  const esHeic = mimeType === "image/heic" || mimeType === "image/heif" || ext === "heic" || ext === "heif";
+  if (esHeic) {
+    const resultado = await heicConvert({ buffer: new Uint8Array(buffer), format: "JPEG", quality: JPEG_QUALITY / 100 });
+    return Buffer.from(resultado);
   }
   return buffer;
 }
@@ -297,7 +301,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const rawBuffer = Buffer.from(await archivo.arrayBuffer());
 
       // 0. Convertir HEIC/HEIF a JPEG antes de cualquier procesamiento
-      const inputBuffer = await convertirHeicAJpeg(rawBuffer, archivo.type);
+      const inputBuffer = await convertirHeicAJpeg(rawBuffer, archivo.type, archivo.name);
 
       // 1. Quitar fondo con remove.bg
       const pngTransparente = await quitarFondo(inputBuffer);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
+import heicConvert from "heic-convert";
 
 const JPEG_QUALITY = 85;
 
@@ -14,9 +15,12 @@ function crearSupabaseAdmin() {
   return createClient(url, key);
 }
 
-async function normalizarImagen(buffer: Buffer, mimeType: string): Promise<Buffer> {
-  if (mimeType === "image/heic" || mimeType === "image/heif") {
-    return sharp(buffer).jpeg({ quality: JPEG_QUALITY }).toBuffer();
+async function normalizarImagen(buffer: Buffer, mimeType: string, fileName: string): Promise<Buffer> {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  const esHeic = mimeType === "image/heic" || mimeType === "image/heif" || ext === "heic" || ext === "heif";
+  if (esHeic) {
+    const resultado = await heicConvert({ buffer: new Uint8Array(buffer), format: "JPEG", quality: JPEG_QUALITY / 100 });
+    return Buffer.from(resultado);
   }
   return buffer;
 }
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const rawBuffer = Buffer.from(await archivo.arrayBuffer());
     const esHeic = archivo.type === "image/heic" || archivo.type === "image/heif";
 
-    const buffer = await normalizarImagen(rawBuffer, archivo.type);
+    const buffer = await normalizarImagen(rawBuffer, archivo.type, archivo.name);
     const url = await subirAStorage(supabase, buffer, productoId, archivo.type, esHeic);
 
     const imagenesExistentes = await contarImagenesExistentes(supabase, productoId);
