@@ -18,7 +18,15 @@ import { supabase } from "@/lib/supabase";
 import { ProductoImagen } from "@/lib/types";
 
 const TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const EXTENSIONES_HEIC = [".heic", ".heif"];
 const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function esArchivoValido(file: File): boolean {
+  const ext = "." + file.name.split(".").pop()?.toLowerCase();
+  const mimeValido = TIPOS_PERMITIDOS.includes(file.type);
+  const esHeicPorExtension = EXTENSIONES_HEIC.includes(ext);
+  return (mimeValido || esHeicPorExtension) && file.size <= TAMANO_MAXIMO_BYTES;
+}
 const MAX_IMAGENES = 10;
 
 interface Props {
@@ -164,9 +172,7 @@ export default function ImagenesProductoUpload({
     const archivos = Array.from(e.target.files ?? []);
     if (archivos.length === 0) return;
 
-    const invalidos = archivos.filter(
-      (f) => !TIPOS_PERMITIDOS.includes(f.type) || f.size > TAMANO_MAXIMO_BYTES
-    );
+    const invalidos = archivos.filter((f) => !esArchivoValido(f));
     if (invalidos.length > 0) {
       setError(
         `${invalidos.length} archivo${invalidos.length > 1 ? "s" : ""} inválido${invalidos.length > 1 ? "s" : ""}: solo JPEG/PNG/WebP/HEIC hasta 10 MB.`
@@ -183,9 +189,7 @@ export default function ImagenesProductoUpload({
     const archivos = Array.from(e.target.files ?? []);
     if (archivos.length === 0) return;
 
-    const invalidos = archivos.filter(
-      (f) => !TIPOS_PERMITIDOS.includes(f.type) || f.size > TAMANO_MAXIMO_BYTES
-    );
+    const invalidos = archivos.filter((f) => !esArchivoValido(f));
     if (invalidos.length > 0) {
       setError(`Archivos inválidos: solo JPEG/PNG/WebP/HEIC hasta 10 MB.`);
       e.target.value = "";
