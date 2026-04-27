@@ -1,7 +1,31 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { ItemCarrito, Producto } from "@/lib/types";
+
+const CART_STORAGE_KEY = "garshop_cart";
+
+function loadCartFromStorage(): ItemCarrito[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as ItemCarrito[];
+  } catch {
+    return [];
+  }
+}
+
+function saveCartToStorage(items: ItemCarrito[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // Cuota de storage excedida u otro error — no bloqueamos la UI
+  }
+}
 
 interface CartContextType {
   items: ItemCarrito[];
@@ -20,6 +44,19 @@ const CartContext = createContext<CartContextType | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ItemCarrito[]>([]);
   const [abierto, setAbierto] = useState(false);
+
+  // Hidratación: leer localStorage una sola vez al montar en el cliente
+  useEffect(() => {
+    const saved = loadCartFromStorage();
+    if (saved.length > 0) {
+      setItems(saved);
+    }
+  }, []);
+
+  // Persistencia: sincronizar localStorage cada vez que el carrito cambie
+  useEffect(() => {
+    saveCartToStorage(items);
+  }, [items]);
 
   const agregar = (producto: Producto) => {
     setItems((prev) => {

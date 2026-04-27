@@ -58,6 +58,51 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+export async function generateMetadata({ params }: PageProps) {
+  const { id } = await params;
+  const producto = await getProducto(id);
+
+  if (!producto) {
+    return {
+      title: "Producto no encontrado — GarShop.rd",
+    };
+  }
+
+  const imagen =
+    producto.imagen_principal ?? producto.imagen_url ?? "/og-image.jpg";
+
+  const titulo = `${producto.nombre} — GarShop.rd`;
+  const descripcion =
+    producto.descripcion ??
+    `Compra ${producto.nombre} en GarShop.rd. Precio: RD$${producto.precio_venta.toLocaleString("es-DO")}. Pedidos por WhatsApp.`;
+
+  return {
+    title: titulo,
+    description: descripcion,
+    openGraph: {
+      title: titulo,
+      description: descripcion,
+      type: "website",
+      locale: "es_DO",
+      siteName: "GarShop.rd",
+      images: [
+        {
+          url: imagen,
+          width: 1200,
+          height: 630,
+          alt: producto.nombre,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: titulo,
+      description: descripcion,
+      images: [imagen],
+    },
+  };
+}
+
 export default async function ProductoDetallePage({ params }: PageProps) {
   const { id } = await params;
   const producto = await getProducto(id);

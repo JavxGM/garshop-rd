@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { notificarPedidoTelegram } from "@/lib/telegram";
 import { ItemCarrito } from "@/lib/types";
 
+type CanalOrigen = "web" | "whatsapp" | "facebook";
+
 interface PedidoPayload {
   clienteNombre: string;
   clienteTelefono: string;
@@ -10,6 +12,7 @@ interface PedidoPayload {
   items: ItemCarrito[];
   total: number;
   notas?: string;
+  canalOrigen: CanalOrigen;
 }
 
 // Valida teléfonos dominicanos: 809, 829, 849 con o sin prefijo 1
@@ -62,6 +65,12 @@ function validarPayload(
     return { ok: false, mensaje: "El total del pedido es inválido" };
   }
 
+  const canalesValidos: CanalOrigen[] = ["web", "whatsapp", "facebook"];
+  const canalRaw = typeof b.canalOrigen === "string" ? b.canalOrigen : "web";
+  const canalOrigen: CanalOrigen = canalesValidos.includes(canalRaw as CanalOrigen)
+    ? (canalRaw as CanalOrigen)
+    : "web";
+
   return {
     ok: true,
     data: {
@@ -71,6 +80,7 @@ function validarPayload(
       items: b.items as ItemCarrito[],
       total: b.total,
       notas: typeof b.notas === "string" ? b.notas.trim() || undefined : undefined,
+      canalOrigen,
     },
   };
 }
@@ -115,6 +125,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       total: pedido.total,
       estado: "pendiente",
       notas: pedido.notas ?? null,
+      canal_origen: pedido.canalOrigen,
     })
     .select("id")
     .single();
@@ -125,6 +136,47 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { error: "No se pudo guardar el pedido. Intenta de nuevo." },
       { status: 500 }
     );
+  }
+
+  // Decrementar stock por cada item del pedido.
+  // Si algún producto no tiene stock suficiente, retornamos 409.
+  // Nota: el pedido ya fue insertado; en un futuro se puede envolver en una
+  // transacción con la RPC si se requiere atomicidad total.
+  for (const item of pedido.items) {
+    const { error: errorStock } = await supabase.rpc("decrementar_stock", {
+      producto_id: item.producto.id,
+      cantidad: item.cantidad,
+    });
+
+    if (errorStock) {
+      console.error(
+        "[GarShop Pedidos] Error al decrementar stock del producto %s: %s",
+        item.producto.id,
+        errorStock.message
+      );
+
+      // ERRCODE P0001 es el que lanzamos cuando no hay stock suficiente.
+      const esStockInsuficiente =
+        errorStock.code === "P0001" ||
+        errorStock.message?.toLowerCase().includes("stock insuficiente");
+
+      if (esStockInsuficiente) {
+        return NextResponse.json(
+          {
+            error: `Stock insuficiente para "${item.producto.nombre}". Por favor contacta a la tienda para confirmar disponibilidad.`,
+            productoId: item.producto.id,
+          },
+          { status: 409 }
+        );
+      }
+
+      // Error inesperado de stock: lo registramos pero no bloqueamos el pedido.
+      // El administrador verá la discrepancia en el panel.
+      console.error(
+        "[GarShop Pedidos] Error inesperado de stock, pedido %s continuará.",
+        pedidoInsertado.id
+      );
+    }
   }
 
   // Notificación Telegram: no bloqueante. Si falla, el pedido ya fue guardado.

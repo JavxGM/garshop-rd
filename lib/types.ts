@@ -46,5 +46,6 @@ export interface Pedido {
   total: number;
   estado: EstadoPedido;
   notas: string | null;
+  canal_origen?: "web" | "whatsapp" | "facebook" | null;
   created_at: string;
 }

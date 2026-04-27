@@ -14,6 +14,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_DO",
     siteName: "GarShop.rd",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "GarShop.rd — Electrónicos en República Dominicana",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
