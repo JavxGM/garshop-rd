@@ -100,7 +100,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const tiposPermitidos = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-  if (!tiposPermitidos.includes(archivo.type)) {
+  const extArchivo = archivo.name.split(".").pop()?.toLowerCase();
+  const esHeicPorExtension = extArchivo === "heic" || extArchivo === "heif";
+  if (!tiposPermitidos.includes(archivo.type) && !esHeicPorExtension) {
     return NextResponse.json(
       { error: `Tipo no soportado: ${archivo.type}` },
       { status: 400 }
@@ -111,7 +113,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const rawBuffer = Buffer.from(await archivo.arrayBuffer());
-    const esHeic = archivo.type === "image/heic" || archivo.type === "image/heif";
+    const esHeic = archivo.type === "image/heic" || archivo.type === "image/heif" || esHeicPorExtension;
 
     const buffer = await normalizarImagen(rawBuffer, archivo.type, archivo.name);
     const url = await subirAStorage(supabase, buffer, productoId, archivo.type, esHeic);

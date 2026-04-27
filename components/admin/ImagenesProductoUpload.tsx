@@ -375,26 +375,36 @@ export default function ImagenesProductoUpload({
 
       {/* Área de upload principal (cuando no hay imágenes aún) */}
       {imagenes.length === 0 && estado === "idle" && (
-        <label className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#1e2a3a] bg-[#060c14] px-4 py-8 text-center transition hover:border-cyan-500/40">
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            multiple
-            onChange={handleSeleccion}
-            className="sr-only"
-          />
+        <div className="flex w-full flex-col items-center gap-3 rounded-lg border border-dashed border-[#1e2a3a] bg-[#060c14] px-4 py-8 text-center">
           <ImageOff className="h-8 w-8 text-gray-700" />
-          <div>
-            <p className="text-sm font-medium text-gray-400">
-              Subir fotos del producto
-            </p>
-            <p className="mt-0.5 text-xs text-gray-600">
-              Se quita el fondo automáticamente con remove.bg
-            </p>
-            <p className="text-xs text-gray-700">JPEG, PNG, WebP o HEIC · máx. 10 MB · hasta 10 fotos</p>
+          <p className="text-sm font-medium text-gray-400">Subir fotos del producto</p>
+          <p className="text-xs text-gray-700">JPEG, PNG, WebP o HEIC · máx. 10 MB · hasta 10 fotos</p>
+          <div className="flex w-full gap-2 mt-1">
+            <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#1e2a3a] bg-[#0a1628] px-3 py-2.5 text-xs font-medium text-gray-400 hover:border-cyan-500/40 hover:text-gray-300 transition">
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                multiple
+                onChange={handleSeleccion}
+                className="sr-only"
+              />
+              <Wand2 className="h-3.5 w-3.5" />
+              Con remove.bg
+            </label>
+            <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#1e2a3a] bg-[#0a1628] px-3 py-2.5 text-xs font-medium text-gray-400 hover:border-[#2e3a4a] hover:text-gray-300 transition">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                multiple
+                onChange={handleSubirSinProcesar}
+                className="sr-only"
+              />
+              <Upload className="h-3.5 w-3.5" />
+              Sin procesar
+            </label>
           </div>
-        </label>
+        </div>
       )}
 
       {/* Estado de procesamiento */}
