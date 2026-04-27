@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ImageOff,
   Wand2,
+  Download,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { ProductoImagen } from "@/lib/types";
@@ -341,6 +342,16 @@ export default function ImagenesProductoUpload({
                       <StarOff className="h-3 w-3" />
                     )}
                   </button>
+                  <a
+                    href={img.url}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded p-0.5 text-gray-400 hover:text-cyan-400"
+                    title="Descargar imagen"
+                  >
+                    <Download className="h-3 w-3" />
+                  </a>
                   <button
                     onClick={() => eliminar(img)}
                     disabled={estado === "procesando"}
