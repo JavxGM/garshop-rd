@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Package,
   ClipboardList,
+  CalendarDays,
   LogOut,
   ExternalLink,
   Menu,
@@ -18,6 +19,7 @@ const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/productos", label: "Productos", icon: Package },
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList },
+  { href: "/admin/publicaciones", label: "Publicaciones", icon: CalendarDays },
 ];
 
 function SidebarContent({

@@ -1,3 +1,41 @@
+// ─── Plan de publicación ─────────────────────────────────────────────────────
+
+export type DiaPlan = "lunes" | "miercoles" | "viernes";
+export type TipoContenido =
+  | "producto_directo"
+  | "problema_solucion"
+  | "cta_directo";
+
+export interface CanalesPlan {
+  instagram: boolean;
+  facebook: boolean;
+  marketplace: string; // texto libre (ej. "Publicado en perfil personal")
+}
+
+export interface PlanPublicacion {
+  id: string;
+  semana_inicio: string; // ISO date YYYY-MM-DD
+  dia: DiaPlan;
+  producto_id: string | null;
+  tipo_contenido: TipoContenido;
+  caption: string;
+  canales: CanalesPlan;
+  publicado: boolean;
+  mensajes_recibidos: number;
+  created_at: string;
+}
+
+export interface SemanaReview {
+  id: string;
+  semana_inicio: string;
+  ventas_cerradas: number;
+  notas: string;
+  cerrada: boolean;
+  created_at: string;
+}
+
+// ─── Productos y pedidos ──────────────────────────────────────────────────────
+
 export type Categoria =
   | "microfono"
   | "adaptador"
