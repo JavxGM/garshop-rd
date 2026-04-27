@@ -17,7 +17,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { ProductoImagen } from "@/lib/types";
 
-const TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp"];
+const TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGENES = 10;
 
@@ -107,39 +107,40 @@ export default function ImagenesProductoUpload({
     setError(null);
     setProgresoTexto(`Subiendo ${archivos.length} imagen${archivos.length > 1 ? "es" : ""}...`);
 
+    const password = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "garshop2024";
+    const errores: string[] = [];
+
     try {
-      const nuevasUrls: string[] = [];
+      for (let i = 0; i < archivos.length; i++) {
+        const archivo = archivos[i];
+        if (archivos.length > 1) {
+          setProgresoTexto(`Subiendo imagen ${i + 1} de ${archivos.length}...`);
+        }
 
-      for (const archivo of archivos) {
-        const nombreArchivo = `${productoId}/${crypto.randomUUID()}.${archivo.name.split(".").pop() ?? "jpg"}`;
-        const { error: uploadError } = await supabase.storage
-          .from("garshop-productos")
-          .upload(nombreArchivo, archivo, { contentType: archivo.type });
+        const formData = new FormData();
+        formData.append("productoId", productoId);
+        formData.append("archivo", archivo);
 
-        if (uploadError) throw new Error(`Error subiendo ${archivo.name}: ${uploadError.message}`);
+        const res = await fetch("/api/admin/subir-imagen", {
+          method: "POST",
+          headers: { "x-admin-password": password },
+          body: formData,
+        });
 
-        const { data } = supabase.storage
-          .from("garshop-productos")
-          .getPublicUrl(nombreArchivo);
+        const json = await res.json();
 
-        nuevasUrls.push(data.publicUrl);
+        if (!res.ok) {
+          errores.push(`${archivo.name}: ${json.error ?? `Error ${res.status}`}`);
+        }
       }
 
-      const esPrimera = imagenes.length === 0;
-      const inserts = nuevasUrls.map((url, i) => ({
-        producto_id: productoId,
-        url,
-        orden: imagenes.length + i,
-        es_principal: esPrimera && i === 0,
-      }));
-
-      const { error: insertError } = await supabase
-        .from("garshop_producto_imagenes")
-        .insert(inserts);
-
-      if (insertError) throw new Error(`Error registrando imágenes: ${insertError.message}`);
-
       await recargarImagenes();
+
+      if (errores.length > 0) {
+        setError(
+          `${archivos.length - errores.length} subida${archivos.length - errores.length !== 1 ? "s" : ""} correcta${archivos.length - errores.length !== 1 ? "s" : ""}, ${errores.length} fallida${errores.length !== 1 ? "s" : ""}: ${errores.join("; ")}`
+        );
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -168,7 +169,7 @@ export default function ImagenesProductoUpload({
     );
     if (invalidos.length > 0) {
       setError(
-        `${invalidos.length} archivo${invalidos.length > 1 ? "s" : ""} inválido${invalidos.length > 1 ? "s" : ""}: solo JPEG/PNG/WebP hasta 10 MB.`
+        `${invalidos.length} archivo${invalidos.length > 1 ? "s" : ""} inválido${invalidos.length > 1 ? "s" : ""}: solo JPEG/PNG/WebP/HEIC hasta 10 MB.`
       );
       e.target.value = "";
       return;
@@ -186,7 +187,7 @@ export default function ImagenesProductoUpload({
       (f) => !TIPOS_PERMITIDOS.includes(f.type) || f.size > TAMANO_MAXIMO_BYTES
     );
     if (invalidos.length > 0) {
-      setError(`Archivos inválidos: solo JPEG/PNG/WebP hasta 10 MB.`);
+      setError(`Archivos inválidos: solo JPEG/PNG/WebP/HEIC hasta 10 MB.`);
       e.target.value = "";
       return;
     }
@@ -354,7 +355,7 @@ export default function ImagenesProductoUpload({
             <label className="relative flex aspect-square cursor-pointer items-center justify-center rounded-lg border border-dashed border-[#1e2a3a] bg-[#060c14] text-gray-600 hover:border-cyan-500/40 hover:text-gray-400 transition">
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                 multiple
                 onChange={handleSeleccion}
                 className="sr-only"
@@ -374,7 +375,7 @@ export default function ImagenesProductoUpload({
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             multiple
             onChange={handleSeleccion}
             className="sr-only"
@@ -387,7 +388,7 @@ export default function ImagenesProductoUpload({
             <p className="mt-0.5 text-xs text-gray-600">
               Se quita el fondo automáticamente con remove.bg
             </p>
-            <p className="text-xs text-gray-700">JPEG, PNG o WebP · máx. 10 MB · hasta 10 fotos</p>
+            <p className="text-xs text-gray-700">JPEG, PNG, WebP o HEIC · máx. 10 MB · hasta 10 fotos</p>
           </div>
         </label>
       )}
@@ -407,7 +408,7 @@ export default function ImagenesProductoUpload({
           <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#1e2a3a] bg-[#060c14] px-3 py-2 text-xs font-medium text-gray-400 hover:border-cyan-500/40 hover:text-gray-300 transition">
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
               multiple
               onChange={handleSeleccion}
               className="sr-only"
@@ -418,7 +419,7 @@ export default function ImagenesProductoUpload({
           <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#1e2a3a] bg-[#060c14] px-3 py-2 text-xs font-medium text-gray-400 hover:border-[#2e3a4a] hover:text-gray-300 transition">
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
               multiple
               onChange={handleSubirSinProcesar}
               className="sr-only"

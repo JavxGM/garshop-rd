@@ -19,6 +19,13 @@ function crearSupabaseAdmin() {
   return createClient(url, key);
 }
 
+async function convertirHeicAJpeg(buffer: Buffer, mimeType: string): Promise<Buffer> {
+  if (mimeType === "image/heic" || mimeType === "image/heif") {
+    return sharp(buffer).jpeg({ quality: JPEG_QUALITY }).toBuffer();
+  }
+  return buffer;
+}
+
 async function quitarFondo(archivoBuffer: Buffer): Promise<Buffer> {
   const apiKey = process.env.REMOVEBG_API_KEY;
   if (!apiKey) throw new Error("REMOVEBG_API_KEY no configurada");
@@ -287,7 +294,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   for (let i = 0; i < archivos.length; i++) {
     const archivo = archivos[i];
     try {
-      const inputBuffer = Buffer.from(await archivo.arrayBuffer());
+      const rawBuffer = Buffer.from(await archivo.arrayBuffer());
+
+      // 0. Convertir HEIC/HEIF a JPEG antes de cualquier procesamiento
+      const inputBuffer = await convertirHeicAJpeg(rawBuffer, archivo.type);
 
       // 1. Quitar fondo con remove.bg
       const pngTransparente = await quitarFondo(inputBuffer);
